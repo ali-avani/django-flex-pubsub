@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-flex-pubsub"
+version = "0.0.2"
+description = "Django project for using Google Cloud Pub/Sub for handling background and scehduler tasks"
+readme = "README.rst"
+authors = [
+  {name = "Saman Zand Haghighi", email = "samanzandh@gmail.com"},
+  {name = "Ali Avani", email = "ali.avani@outlook.com"}
+]
+maintainers = [
+  {name = "Saman Zand Haghighi", email = "samanzandh@gmail.com"},
+  {name = "Ali Avani", email = "ali.avani@outlook.com"}
+]
+classifiers = [
+
+]
+license = {text = "MIT license"}
+dependencies = [
+  
+]
+
+[project.optional-dependencies]
+dev = [
+    "coverage",  # testing
+    "mypy",  # linting
+    "pytest",  # testing
+    "ruff"  # linting
+]
+
+[project.urls]
+
+bugs = "https://github.com/ali-avani/django-flex-pubsub/issues"
+changelog = "https://github.com/ali-avani/django-flex-pubsub/blob/master/changelog.md"
+homepage = "https://github.com/ali-avani/django-flex-pubsub"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+"*" = ["*.*"]
+
+
+
+
+# Mypy
+# ----
+
+[tool.mypy]
+files = "."
+
+# Use strict defaults
+strict = true
+warn_unreachable = true
+warn_no_return = true
+
+[[tool.mypy.overrides]]
+# Don't require test functions to include types
+module = "tests.*"
+allow_untyped_defs = true
+disable_error_code = "attr-defined"
+
