@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-flex-pubsub"
-version = "0.0.2"
+version = "0.0.3"
 description = "Django project for using Google Cloud Pub/Sub for handling background and scehduler tasks"
 readme = "README.rst"
 authors = [
