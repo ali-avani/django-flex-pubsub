@@ -64,7 +64,7 @@ class AppSettings:
 
     @property
     def LISTENER_PORT(self):
-        return self._setting("LISTENER_PORT", 8001)
+        return int(port) if str(port := self._setting("LISTENER_PORT", None)).isdigit() else 8001
 
     @property
     def SUBSCRIPTIONS(self):

@@ -33,10 +33,6 @@ class BaseBackend(metaclass=Singleton):
     def subscribe(self, callback: Callable[[CallbackContext], None], task: Callable) -> None:
         raise NotImplementedError
 
-    def subscribe_tasks(self, callback: Callable[[CallbackContext], None]) -> None:
-        for task in task_registry.get_all_tasks().values():
-            self.subscribe(callback, task)
-
 
 class LocalPubSubBackend(BaseBackend):
     def publish(self, raw_message: RequestMessage):
@@ -90,18 +86,23 @@ class GooglePubSubBackend(BaseBackend):
         logger.info(f"Publishing message to topic {self.topic_path}")
         self.publisher.publish(self.topic_path, request_message.model_dump_json().encode("utf-8"))
 
-    def subscribe(self, callback: SubscriptionCallback, task: Callable) -> None:
-        for subscription_name, subscription_path in self.subscriptions.items():
-            if subscription_name not in task.subscriptions:
-                continue
-            self._ensure_subscription_exists(subscription_path)
-            logger.info(f"Subscribing to {subscription_path}")
-            self.subscriber.subscribe(
-                subscription_path,
-                callback=self._wrap_callback(callback, task),
-            )
+    def subscribe(self, callback: SubscriptionCallback) -> None:
+        from .tasks import task_registry
 
-        self.run_server()
+        task_names = set()
+        for task_name, task in task_registry.tasks.items():
+            if task_name in task_names:
+                continue
+            for subscription_name, subscription_path in self.subscriptions.items():
+                if subscription_name not in task.subscriptions:
+                    continue
+                task_names.add(task_name)
+                self._ensure_subscription_exists(subscription_path)
+                logger.info(f"Subscribing to {subscription_path}")
+                self.subscriber.subscribe(
+                    subscription_path,
+                    callback=self._wrap_callback(callback, task),
+                )
 
     def _wrap_callback(self, callback: SubscriptionCallback, task: Callable) -> Callable[[str], None]:
         from google.cloud.pubsub_v1.subscriber.message import Message

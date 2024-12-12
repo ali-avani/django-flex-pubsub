@@ -20,9 +20,12 @@ class Command(BaseCommand):
             data = RequestMessage.model_validate_json(raw_message)
             t_args = data.args
             t_kwargs = data.kwargs
-
+            t_task_name = data.task_name
+            
             ack()
-            task(*t_args, **t_kwargs)
+            if set(task.subscriptions).issubset(app_settings.SUBSCRIPTIONS) and (task.name == t_task_name):
+                task(*t_args, **t_kwargs)
+
         except Exception as e:
             self.stderr.write(f"Error processing message: {str(e)}")
 
@@ -39,4 +42,5 @@ class Command(BaseCommand):
 
         self.display_registered_tasks()
         self.stdout.write("Starting subscriber...")
-        backend.subscribe_tasks(self.message_callback)
+        backend.subscribe(self.message_callback)
+        backend.run_server()
