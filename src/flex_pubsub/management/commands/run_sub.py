@@ -21,6 +21,11 @@ class Command(BaseCommand):
             task = task_registry.get_task(data.task_name)
             t_args = data.args
             t_kwargs = data.kwargs
+            t_task_name = data.task_name
+            
+            ack()
+            if set(task.subscriptions).issubset(app_settings.SUBSCRIPTIONS) and (task.name == t_task_name):
+                task(*t_args, **t_kwargs)
 
             if set(task.subscriptions).issubset(set(app_settings.SUBSCRIPTIONS)):
                 ack()
