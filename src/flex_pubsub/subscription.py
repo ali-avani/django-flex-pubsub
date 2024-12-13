@@ -20,7 +20,7 @@ class SubscriptionBase(Enum):
     @classmethod
     def validate_chosen_subscriptions(cls):
         selected_subscriptions = app_settings.SUBSCRIPTIONS
-        all_subscriptions = map(attrgetter("value"), chain.from_iterable(cls.get_all_subscriptions()))
+        all_subscriptions = list(map(attrgetter("value"), chain.from_iterable(cls.get_all_subscriptions())))
         invalid_subscriptions = list(
             filter(
                 lambda subscription: subscription not in all_subscriptions,

@@ -2,6 +2,7 @@ from typing import Any
 
 from flex_pubsub.app_settings import app_settings
 from flex_pubsub.backends import BaseBackend
+from django.utils import timezone
 from flex_pubsub.tasks import task_registry
 from flex_pubsub.types import CallbackContext, RequestMessage
 
@@ -15,14 +16,15 @@ class Command(BaseCommand):
         try:
             raw_message = context.raw_message
             ack = context.ack
-            task = context.task
-
             data = RequestMessage.model_validate_json(raw_message)
+
+            task = task_registry.get_task(data.task_name)
             t_args = data.args
             t_kwargs = data.kwargs
 
-            ack()
-            task(*t_args, **t_kwargs)
+            if set(task.subscriptions).issubset(set(app_settings.SUBSCRIPTIONS)):
+                ack()
+                task(*t_args, **t_kwargs)
         except Exception as e:
             self.stderr.write(f"Error processing message: {str(e)}")
 
@@ -39,4 +41,4 @@ class Command(BaseCommand):
 
         self.display_registered_tasks()
         self.stdout.write("Starting subscriber...")
-        backend.subscribe_tasks(self.message_callback)
+        backend.subscribe(self.message_callback)

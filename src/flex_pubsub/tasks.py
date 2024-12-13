@@ -69,6 +69,7 @@ def register_task(
     :param schedule: Optional schedule configuration dict.
     """
 
+    @wraps(register_task)
     def decorator(f: Callable) -> Callable:
         from .publisher import send_task
 
