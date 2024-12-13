@@ -6,7 +6,7 @@ from .app_settings import app_settings
 
 def are_subscriptions_valid(subscriptions: List[StrEnum]):
     if app_settings.SUBSCRIPTIONS:
-        return any(i in app_settings.SUBSCRIPTIONS for i in subscriptions)
+        return any(i.value in app_settings.SUBSCRIPTIONS for i in subscriptions)
     return True
 
 
