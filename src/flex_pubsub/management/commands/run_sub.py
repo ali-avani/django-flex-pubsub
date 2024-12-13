@@ -1,12 +1,11 @@
 from typing import Any
 
+from django.core.management.base import BaseCommand
+
 from flex_pubsub.app_settings import app_settings
 from flex_pubsub.backends import BaseBackend
-from django.utils import timezone
 from flex_pubsub.tasks import task_registry
 from flex_pubsub.types import CallbackContext, RequestMessage
-
-from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
@@ -21,11 +20,6 @@ class Command(BaseCommand):
             task = task_registry.get_task(data.task_name)
             t_args = data.args
             t_kwargs = data.kwargs
-            t_task_name = data.task_name
-            
-            ack()
-            if set(task.subscriptions).issubset(app_settings.SUBSCRIPTIONS) and (task.name == t_task_name):
-                task(*t_args, **t_kwargs)
 
             if set(task.subscriptions).issubset(set(app_settings.SUBSCRIPTIONS)):
                 ack()
