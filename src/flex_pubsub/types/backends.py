@@ -12,6 +12,7 @@ class RequestMessage(BaseModel):
 class CallbackContext(BaseModel):
     raw_message: str
     ack: Callable[[], None]
+    subscription_name: str
 
 
 SubscriptionCallback = Callable[[CallbackContext], None]

@@ -92,16 +92,20 @@ class GooglePubSubBackend(BaseBackend):
             logger.info(f"Subscribing to {subscription_path}")
             self.subscriber.subscribe(
                 subscription_path,
-                callback=self._wrap_callback(callback),
+                callback=self._wrap_callback(callback, subscription_name),
             )
 
         self.run_server()
 
-    def _wrap_callback(self, callback: SubscriptionCallback) -> Callable[[str], None]:
+    def _wrap_callback(self, callback: SubscriptionCallback, subscription_name: str) -> Callable[[str], None]:
         from google.cloud.pubsub_v1.subscriber.message import Message
 
         def _callback(message: Message) -> None:
-            context = CallbackContext(raw_message=message.data.decode("utf-8"), ack=message.ack)
+            context = CallbackContext(
+                raw_message=message.data.decode("utf-8"),
+                ack=message.ack,
+                subscription_name=subscription_name,
+            )
             callback(context)
 
         return _callback
