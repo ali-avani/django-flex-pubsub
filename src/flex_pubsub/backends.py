@@ -95,7 +95,7 @@ class GooglePubSubBackend(BaseBackend):
                 callback=self._wrap_callback(callback),
             )
 
-            self.run_server()
+        self.run_server()
 
     def _wrap_callback(self, callback: SubscriptionCallback) -> Callable[[str], None]:
         from google.cloud.pubsub_v1.subscriber.message import Message
