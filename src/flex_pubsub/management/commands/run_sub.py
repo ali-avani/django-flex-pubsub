@@ -1,3 +1,4 @@
+from logging import getLogger
 from typing import Any
 
 from django.core.management.base import BaseCommand
@@ -7,12 +8,16 @@ from flex_pubsub.backends import BaseBackend
 from flex_pubsub.tasks import task_registry
 from flex_pubsub.types import CallbackContext, RequestMessage
 
+logger = getLogger("django.pubsub")
+
 
 class Command(BaseCommand):
     help = "Starts the subscriber to listen for messages and execute tasks."
 
     def message_callback(self, context: CallbackContext) -> None:
         raw_message = context.raw_message
+        logger.info(f"Received message: {raw_message}")
+
         ack = context.ack
         data = RequestMessage.model_validate_json(raw_message)
 
@@ -20,7 +25,7 @@ class Command(BaseCommand):
         t_args = data.args
         t_kwargs = data.kwargs
 
-        if context.subscription_name not in task.subscriptions:
+        if not task or context.subscription_name not in task.subscriptions:
             ack()
             return
 
