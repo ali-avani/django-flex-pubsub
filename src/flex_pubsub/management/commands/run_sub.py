@@ -1,4 +1,3 @@
-import traceback
 from logging import getLogger
 from typing import Any
 
@@ -43,7 +42,6 @@ class Command(BaseCommand):
                         "kwargs": t_kwargs,
                     },
                 )
-                traceback.print_exc()
 
             ack()
 
