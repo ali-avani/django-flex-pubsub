@@ -1,3 +1,4 @@
+import traceback
 from logging import getLogger
 from typing import Any
 
@@ -30,7 +31,20 @@ class Command(BaseCommand):
             return
 
         if set(task.subscriptions).issubset(set(app_settings.SUBSCRIPTIONS)):
-            task(*t_args, **t_kwargs)
+            try:
+                task(*t_args, **t_kwargs)
+            except Exception as e:
+                logger.error(
+                    f"Error executing task: {e}",
+                    exc_info=True,
+                    extra={
+                        "task_name": data.task_name,
+                        "args": t_args,
+                        "kwargs": t_kwargs,
+                    },
+                )
+                traceback.print_exc()
+
             ack()
 
     def display_registered_tasks(self):
