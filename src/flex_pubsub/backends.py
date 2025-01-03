@@ -10,6 +10,8 @@ try:
 except ImportError:
     pubsub_v1 = None
 
+from concurrent.futures import ThreadPoolExecutor
+
 from .app_settings import app_settings
 from .tasks import task_registry
 from .types import CallbackContext, RequestMessage, SubscriptionCallback
@@ -36,15 +38,14 @@ class BaseBackend(metaclass=Singleton):
 
 class LocalPubSubBackend(BaseBackend):
     def publish(self, raw_message: RequestMessage):
-        from .tasks import task_registry
-
         logger.info(f"Publishing message: {raw_message}")
 
         message = RequestMessage.model_validate_json(raw_message)
         if not (task := task_registry.get_task(task_name := message.task_name)):
             raise ValueError(f"Task '{task_name}' not found.")
 
-        call(task, *message.args, **message.kwargs)
+        with ThreadPoolExecutor() as executor:
+            executor.submit(call, task, *message.args, **message.kwargs)
 
     def subscribe(self, *args, **kwargs) -> None:
         logger.info("Subscribing to local pub/sub (Doing nothing)")
@@ -60,7 +61,10 @@ class GooglePubSubBackend(BaseBackend):
         self.subscriber = pubsub_v1.SubscriberClient(credentials=credentials)
         self.publisher = pubsub_v1.PublisherClient(credentials=credentials)
         self.subscriptions = {
-            subscription_name: self.subscriber.subscription_path(project_id, subscription_name)
+            subscription_name: self.subscriber.subscription_path(
+                project_id,
+                subscription_name,
+            )
             for subscription_name in app_settings.SUBSCRIPTIONS
         }
         self.topic_path = self.publisher.topic_path(project_id, app_settings.TOPIC_NAME)
@@ -84,7 +88,9 @@ class GooglePubSubBackend(BaseBackend):
         self._ensure_topic_exists()
 
         logger.info(f"Publishing message to topic {self.topic_path}")
-        self.publisher.publish(self.topic_path, request_message.model_dump_json().encode("utf-8"))
+        self.publisher.publish(
+            self.topic_path, request_message.model_dump_json().encode("utf-8")
+        )
 
     def subscribe(self, callback: SubscriptionCallback) -> None:
         for subscription_name, subscription_path in self.subscriptions.items():
@@ -97,7 +103,11 @@ class GooglePubSubBackend(BaseBackend):
 
         self.run_server()
 
-    def _wrap_callback(self, callback: SubscriptionCallback, subscription_name: str) -> Callable[[str], None]:
+    def _wrap_callback(
+        self,
+        callback: SubscriptionCallback,
+        subscription_name: str,
+    ) -> Callable[[str], None]:
         from google.cloud.pubsub_v1.subscriber.message import Message
 
         def _callback(message: Message) -> None:
@@ -119,7 +129,13 @@ class GooglePubSubBackend(BaseBackend):
 
     def _ensure_subscription_exists(self, subscription_path: str) -> None:
         try:
-            self.subscriber.get_subscription(request={"subscription": subscription_path})
+            self.subscriber.get_subscription(
+                request={"subscription": subscription_path}
+            )
         except NotFound:
-            logger.warning(f"Subscription not found: {subscription_path}. Creating subscription.")
-            self.subscriber.create_subscription(request={"name": subscription_path, "topic": self.topic_path})
+            logger.warning(
+                f"Subscription not found: {subscription_path}. Creating subscription."
+            )
+            self.subscriber.create_subscription(
+                request={"name": subscription_path, "topic": self.topic_path}
+            )
