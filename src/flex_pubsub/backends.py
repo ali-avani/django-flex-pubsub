@@ -10,7 +10,7 @@ try:
 except ImportError:
     pubsub_v1 = None
 
-from concurrent.futures import ThreadPoolExecutor
+import threading
 
 from .app_settings import app_settings
 from .tasks import task_registry
@@ -44,8 +44,10 @@ class LocalPubSubBackend(BaseBackend):
         if not (task := task_registry.get_task(task_name := message.task_name)):
             raise ValueError(f"Task '{task_name}' not found.")
 
-        with ThreadPoolExecutor() as executor:
-            executor.submit(call, task, *message.args, **message.kwargs)
+        threaded_call = threading.Thread(
+            target=lambda: call(task, *message.args, **message.kwargs)
+        )
+        threaded_call.start()
 
     def subscribe(self, *args, **kwargs) -> None:
         logger.info("Subscribing to local pub/sub (Doing nothing)")
