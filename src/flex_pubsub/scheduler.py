@@ -37,7 +37,9 @@ class BaseSchedulerBackend:
 
 class LocalSchedulerBackend(BaseSchedulerBackend):
     def delete_job(self, task_name: str) -> None:
-        logger.info(f"LocalSchedulerBackend: delete_job called with task_name={task_name}")
+        logger.info(
+            f"LocalSchedulerBackend: delete_job called with task_name={task_name}"
+        )
 
     def list_jobs(self) -> ListJobsResponse:
         logger.info("LocalSchedulerBackend: list_jobs called")
@@ -64,7 +66,8 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
 
     def delete_job(self, task_name: str) -> None:
         job_name = self._get_job_name(task_name)
-        self.client.delete_job(request=DeleteJobRequest(name=job_name))
+        with contextlib.suppress(NotFound):
+            self.client.delete_job(request=DeleteJobRequest(name=job_name))
 
     def list_jobs(self) -> ListJobsResponse:
         return self.client.list_jobs(request=ListJobsRequest(parent=self.parent))
@@ -110,4 +113,6 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
                 return self.client.update_job(request=UpdateJobRequest(job=job))
             return retrieved_job
 
-        return self.client.create_job(request=CreateJobRequest(parent=self.parent, job=job))
+        return self.client.create_job(
+            request=CreateJobRequest(parent=self.parent, job=job)
+        )
