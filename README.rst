@@ -3,7 +3,7 @@ Django Flex Pub/Sub
 ===================
 
 
-.. image:: https://img.shields.io/pypi/v/flex_pubsub.svg
+.. image:: https://img.shields.io/pypi/v/django-flex-pubsub.svg
         :target: https://pypi.python.org/pypi/django-flex-pubsub
 
 
