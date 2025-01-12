@@ -4,14 +4,7 @@ Django Flex Pub/Sub
 
 
 .. image:: https://img.shields.io/pypi/v/flex_pubsub.svg
-        :target: https://pypi.python.org/pypi/flex_pubsub
-
-.. image:: https://img.shields.io/travis/ali-avani/flex_pubsub.svg
-        :target: https://travis-ci.com/ali-avani/flex_pubsub
-
-.. image:: https://readthedocs.org/projects/django-flex-pubsub/badge/?version=latest
-        :target: https://django-flex-pubsub.readthedocs.io/en/latest/?version=latest
-        :alt: Documentation Status
+        :target: https://pypi.python.org/pypi/django-flex-pubsub
 
 
 
