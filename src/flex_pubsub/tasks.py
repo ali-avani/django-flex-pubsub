@@ -1,5 +1,6 @@
 from functools import partial, wraps
 from typing import Any, Callable, Dict, List, Optional
+from operator import attrgetter
 
 from google.cloud.scheduler_v1.types.job import Job
 
@@ -80,7 +81,7 @@ def register_task(
             return f(*args, **kwargs)
 
         wrapper.delay = partial(send_task, task_name=task_name)
-        wrapper.subscriptions = [subscription.value for subscription in subscriptions]
+        wrapper.subscriptions = list(map(attrgetter("value"), subscriptions))
         wrapper.name = task_name
         if are_subscriptions_valid(subscriptions):
             task_registry.register(wrapper, name=task_name, raw_schedule=schedule)
