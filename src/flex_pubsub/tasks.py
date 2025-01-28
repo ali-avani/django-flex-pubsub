@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional
 from google.cloud.scheduler_v1.types.job import Job
 
 from .app_settings import app_settings
+from .constants import TASK_EXTRA_CONTEXT_ATTRIBUTE
 from .scheduler import BaseSchedulerBackend
 from .types import SchedulerJob
 from .utils import are_subscriptions_valid
@@ -27,7 +28,9 @@ class TaskRegistry:
         self.tasks[task_name] = func
         if raw_schedule and (schedule := SchedulerJob.model_validate(raw_schedule)):
             self.schedule_configs[task_name] = schedule.model_dump()
-            scheduler_backend: BaseSchedulerBackend = app_settings.SCHEDULER_BACKEND_CLASS()
+            scheduler_backend: BaseSchedulerBackend = (
+                app_settings.SCHEDULER_BACKEND_CLASS()
+            )
             scheduler_backend.schedule(task_name, schedule)
         return func
 
@@ -37,7 +40,9 @@ class TaskRegistry:
     def sync_registered_jobs(self):
         scheduler_backend: BaseSchedulerBackend = app_settings.SCHEDULER_BACKEND_CLASS()
         jobs_list = scheduler_backend.list_jobs()
-        unregistered_tasks = set(map(self._get_job_name, jobs_list.jobs)).difference(set(self.tasks))
+        unregistered_tasks = set(map(self._get_job_name, jobs_list.jobs)).difference(
+            set(self.tasks)
+        )
 
         for task_name in unregistered_tasks:
             if self.schedule_configs.get(task_name):
@@ -61,15 +66,8 @@ def register_task(
     subscriptions: List[str] = [],
     name: Optional[str] = None,
     schedule: Optional[SchedulerJob] = None,
+    **kwargs,
 ) -> Callable[[Callable], Callable]:
-    """
-    Decorator to register a task.
-
-    :param name: Optional custom name for the task.
-    :param schedule: Optional schedule configuration dict.
-    """
-
-    @wraps(register_task)
     def decorator(f: Callable) -> Callable:
         from .publisher import send_task
 
@@ -84,6 +82,7 @@ def register_task(
         wrapper.name = task_name
         if are_subscriptions_valid(subscriptions):
             task_registry.register(wrapper, name=task_name, raw_schedule=schedule)
+        setattr(wrapper, TASK_EXTRA_CONTEXT_ATTRIBUTE, kwargs)
         return wrapper
 
     return decorator
