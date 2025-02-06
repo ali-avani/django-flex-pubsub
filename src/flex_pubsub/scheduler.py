@@ -3,7 +3,7 @@ import json
 import logging
 
 try:
-    from google.api_core.exceptions import NotFound
+    from google.api_core.exceptions import AlreadyExists, NotFound
     from google.cloud import scheduler_v1
     from google.cloud.scheduler_v1.types.cloudscheduler import (
         CreateJobRequest,
@@ -113,6 +113,9 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
                 return self.client.update_job(request=UpdateJobRequest(job=job))
             return retrieved_job
 
-        return self.client.create_job(
-            request=CreateJobRequest(parent=self.parent, job=job)
-        )
+        with contextlib.suppress(AlreadyExists):
+            return self.client.create_job(
+                request=CreateJobRequest(parent=self.parent, job=job)
+            )
+
+        return job
