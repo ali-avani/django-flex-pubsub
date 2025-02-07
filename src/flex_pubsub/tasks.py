@@ -1,6 +1,6 @@
 from functools import partial, wraps
-from typing import Any, Callable, Dict, List, Optional
 from operator import attrgetter
+from typing import Any, Callable, Dict, List, Optional
 
 from google.cloud.scheduler_v1.types.job import Job
 
@@ -27,6 +27,7 @@ class TaskRegistry:
             return lambda f: self.register(f, name=name, raw_schedule=raw_schedule)
         task_name = name or func.__name__
         self.tasks[task_name] = func
+
         if raw_schedule and (schedule := SchedulerJob.model_validate(raw_schedule)):
             self.schedule_configs[task_name] = schedule.model_dump()
             scheduler_backend: BaseSchedulerBackend = (
@@ -38,12 +39,23 @@ class TaskRegistry:
     def _get_job_name(self, job: Job):
         return job.name.split("/")[-1]
 
-    def sync_registered_jobs(self):
+    def sync_registered_jobs(self, *, excluded_subscriptions: List[str] = []):
         scheduler_backend: BaseSchedulerBackend = app_settings.SCHEDULER_BACKEND_CLASS()
         jobs_list = scheduler_backend.list_jobs()
-        unregistered_tasks = set(map(self._get_job_name, jobs_list.jobs)).difference(
-            set(self.tasks)
-        )
+        unregistered_tasks = [
+            task_name
+            for task_name in set(map(self._get_job_name, jobs_list.jobs)).difference(
+                set(self.tasks)
+            )
+            if (
+                (task := task_registry.get_task(task_name))
+                and not any(
+                    subscription in task.subscriptions
+                    for subscription in excluded_subscriptions
+                )
+            )
+            or not task
+        ]
 
         for task_name in unregistered_tasks:
             if self.schedule_configs.get(task_name):

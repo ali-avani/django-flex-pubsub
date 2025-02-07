@@ -20,7 +20,9 @@ class AppSettings:
 
     @property
     def BACKEND_CLASS(self):
-        backend_class_path = self._setting("BACKEND_CLASS", "flex_pubsub.backends.LocalPubSubBackend")
+        backend_class_path = self._setting(
+            "BACKEND_CLASS", "flex_pubsub.backends.LocalPubSubBackend"
+        )
         return import_attribute(backend_class_path)
 
     @property
@@ -38,7 +40,9 @@ class AppSettings:
             if isinstance(credentials, str):
                 from google.oauth2 import service_account
 
-                return service_account.Credentials.from_service_account_file(credentials)
+                return service_account.Credentials.from_service_account_file(
+                    credentials
+                )
             return credentials
         return None
 
@@ -64,11 +68,24 @@ class AppSettings:
 
     @property
     def LISTENER_PORT(self):
-        return int(port) if str(port := self._setting("LISTENER_PORT", None)).isdigit() else 8001
+        return (
+            int(port)
+            if str(port := self._setting("LISTENER_PORT", None)).isdigit()
+            else 8001
+        )
 
     @property
     def SUBSCRIPTIONS(self):
-        return list(map(str.strip, filter(bool, self._setting("SUBSCRIPTIONS", "").strip().split(","))))
+        return list(
+            map(
+                str.strip,
+                filter(bool, self._setting("SUBSCRIPTIONS", "").strip().split(",")),
+            )
+        )
+
+    @property
+    def SCHEDULER_INITIAL_SYNC(self):
+        return self._setting("SCHEDULER_INITIAL_SYNC", False)
 
 
 app_settings = AppSettings()

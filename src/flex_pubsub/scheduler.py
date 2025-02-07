@@ -70,7 +70,13 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
             self.client.delete_job(request=DeleteJobRequest(name=job_name))
 
     def list_jobs(self) -> ListJobsResponse:
-        return self.client.list_jobs(request=ListJobsRequest(parent=self.parent))
+        jobs = self.client.list_jobs(request=ListJobsRequest(parent=self.parent))
+        for job in jobs:
+            if not job.name.split("/")[-1].startswith("flex_pubsub_"):
+                jobs.jobs.remove(job)
+
+            job.name = job.name.strip("flex_pubsub_")
+        return jobs
 
     def schedule(self, task_name: str, schedule_config: SchedulerJob) -> Job:
         job = Job(
@@ -91,7 +97,7 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
         return self._get_or_create_or_update_task(job)
 
     def _get_job_name(self, task_name: str) -> str:
-        return f"{self.parent}/jobs/{task_name}"
+        return f"{self.parent}/jobs/flex_pubsub_{task_name}"
 
     def _get_parent(self):
         return f"projects/{self.project_id}/locations/{self.location}"
