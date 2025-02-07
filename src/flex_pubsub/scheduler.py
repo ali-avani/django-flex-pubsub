@@ -8,6 +8,7 @@ try:
     from google.cloud.scheduler_v1.types.cloudscheduler import (
         CreateJobRequest,
         DeleteJobRequest,
+        GetJobRequest,
         ListJobsRequest,
         ListJobsResponse,
         UpdateJobRequest,
@@ -24,13 +25,7 @@ logger = logging.getLogger("flex_pubsub")
 
 
 class BaseSchedulerBackend:
-    def delete_job(self, task_name: str, scheduler: SchedulerJob) -> None:
-        raise NotImplementedError
-
-    def create_job(self, task_name: str, scheduler: SchedulerJob) -> None:
-        raise NotImplementedError
-
-    def update_job(self, task_name: str, scheduler: SchedulerJob) -> None:
+    def delete_job(self, task_name: str) -> None:
         raise NotImplementedError
 
     def list_jobs(self) -> ListJobsResponse:
@@ -45,18 +40,6 @@ class LocalSchedulerBackend(BaseSchedulerBackend):
         logger.info(
             f"LocalSchedulerBackend: delete_job called with task_name={task_name}"
         )
-
-    def create_job(self, task_name: str, schedule_config: SchedulerJob) -> Job:
-        logger.info(
-            f"LocalSchedulerBackend: create_job called with task_name={task_name}, schedule_config={schedule_config}"
-        )
-        return Job(name=task_name)
-
-    def update_job(self, task_name: str, schedule_config: SchedulerJob) -> Job:
-        logger.info(
-            f"LocalSchedulerBackend: update_job called with task_name={task_name}, schedule_config={schedule_config}"
-        )
-        return Job(name=task_name)
 
     def list_jobs(self) -> ListJobsResponse:
         logger.info("LocalSchedulerBackend: list_jobs called")
@@ -81,49 +64,58 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
         self.parent = self._get_parent()
         logger.info("Initialized GoogleSchedulerBackend")
 
-    def job_from_scheduler(self, scheduler: SchedulerJob):
-        return Job(
-            name=self._get_job_name(scheduler.task_name),
-            schedule=scheduler.schedule,
-            time_zone=scheduler.time_zone,
-            pubsub_target=PubsubTarget(
-                topic_name=app_settings.TOPIC_PATH,
-                data=json.dumps(
-                    {
-                        "task_name": scheduler.task_name,
-                        "args": scheduler.args,
-                        "kwargs": scheduler.kwargs,
-                    }
-                ).encode(),
-            ),
-        )
-
     def delete_job(self, task_name: str) -> None:
         job_name = self._get_job_name(task_name)
         with contextlib.suppress(NotFound):
             self.client.delete_job(request=DeleteJobRequest(name=job_name))
 
-    def create_job(self, task_name: str, scheduler: SchedulerJob) -> Job:
-        job = self.job_from_scheduler(scheduler)
-        return self.client.create_job(
-            request=CreateJobRequest(parent=self.parent, job=job)
-        )
-
-    def update_job(self, task_name: str, scheduler: SchedulerJob) -> Job:
-        job = self.job_from_scheduler(scheduler)
-        return self.client.update_job(request=UpdateJobRequest(job=job))
-
     def list_jobs(self) -> ListJobsResponse:
         return self.client.list_jobs(request=ListJobsRequest(parent=self.parent))
 
     def schedule(self, task_name: str, schedule_config: SchedulerJob) -> Job:
-        with contextlib.suppress(AlreadyExists):
-            return self.create_job(task_name, schedule_config)
-
-        return self.update_job(task_name, schedule_config)
+        job = Job(
+            name=self._get_job_name(task_name),
+            schedule=schedule_config.schedule,
+            time_zone=schedule_config.time_zone,
+            pubsub_target=PubsubTarget(
+                topic_name=app_settings.TOPIC_PATH,
+                data=json.dumps(
+                    {
+                        "task_name": task_name,
+                        "args": schedule_config.args,
+                        "kwargs": schedule_config.kwargs,
+                    }
+                ).encode(),
+            ),
+        )
+        return self._get_or_create_or_update_task(job)
 
     def _get_job_name(self, task_name: str) -> str:
         return f"{self.parent}/jobs/{task_name}"
 
     def _get_parent(self):
         return f"projects/{self.project_id}/locations/{self.location}"
+
+    def _get_job(self, request: GetJobRequest) -> Job | None:
+        with contextlib.suppress(NotFound):
+            return self.client.get_job(request=request)
+
+    def _compare_jobs(self, retrieved_job: Job, job: Job) -> bool:
+        return (
+            retrieved_job.schedule == job.schedule
+            and retrieved_job.time_zone == job.time_zone
+            and retrieved_job.pubsub_target == job.pubsub_target
+        )
+
+    def _get_or_create_or_update_task(self, job: Job) -> Job:
+        if retrieved_job := self._get_job(GetJobRequest(name=job.name)):
+            if not self._compare_jobs(retrieved_job, job):
+                return self.client.update_job(request=UpdateJobRequest(job=job))
+            return retrieved_job
+
+        with contextlib.suppress(AlreadyExists):
+            return self.client.create_job(
+                request=CreateJobRequest(parent=self.parent, job=job)
+            )
+
+        return job
