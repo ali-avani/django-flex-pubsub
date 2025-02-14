@@ -71,11 +71,14 @@ class GoogleSchedulerBackend(BaseSchedulerBackend):
 
     def list_jobs(self) -> ListJobsResponse:
         jobs = self.client.list_jobs(request=ListJobsRequest(parent=self.parent))
-        for job in jobs:
-            if not job.name.split("/")[-1].startswith("flex_pubsub_"):
+        jobs_iterable = jobs.jobs[::]
+        for job in jobs_iterable:
+            if not (task_name:=job.name.split("/")[-1]).startswith("flex_pubsub_"):
                 jobs.jobs.remove(job)
 
-            job.name = job.name.strip("flex_pubsub_")
+            path = "/".join(job.name.split('/')[:-1])
+            job.name = "/".join([path, task_name.replace("flex_pubsub_", "")])
+
         return jobs
 
     def schedule(self, task_name: str, schedule_config: SchedulerJob) -> Job:

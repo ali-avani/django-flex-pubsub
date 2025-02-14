@@ -41,10 +41,10 @@ class TaskRegistry:
 
     def sync_registered_jobs(self, *, excluded_subscriptions: List[str] = []):
         scheduler_backend: BaseSchedulerBackend = app_settings.SCHEDULER_BACKEND_CLASS()
-        jobs_list = scheduler_backend.list_jobs()
+        jobs_list = list(scheduler_backend.list_jobs().jobs)
         unregistered_tasks = [
             task_name
-            for task_name in set(map(self._get_job_name, jobs_list.jobs)).difference(
+            for task_name in set(map(self._get_job_name, jobs_list)).difference(
                 set(self.tasks)
             )
             if (
