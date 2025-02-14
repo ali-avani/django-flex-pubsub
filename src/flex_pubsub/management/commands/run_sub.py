@@ -37,9 +37,11 @@ class Command(BaseCommand):
                     f"Error executing task: {e}",
                     exc_info=True,
                     extra={
-                        "task_name": data.task_name,
-                        "args": t_args,
-                        "kwargs": t_kwargs,
+                        "task_payload": {
+                            "task_name": data.task_name,
+                            "args": t_args,
+                            "kwargs": t_kwargs,
+                        }
                     },
                 )
 
