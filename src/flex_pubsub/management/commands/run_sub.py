@@ -1,4 +1,5 @@
 from logging import getLogger
+from operator import call
 from typing import Any
 
 from django.core.management.base import BaseCommand
@@ -55,6 +56,7 @@ class Command(BaseCommand):
             )
 
     def handle(self, *args: Any, **options: Any) -> None:
+        (on_run := app_settings.ON_RUN_SUB_CALLBACK) and call(on_run)
         backend_class = app_settings.BACKEND_CLASS
         backend: BaseBackend = backend_class()
 

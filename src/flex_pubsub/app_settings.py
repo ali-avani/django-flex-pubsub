@@ -86,6 +86,13 @@ class AppSettings:
     @property
     def SCHEDULER_INITIAL_SYNC(self):
         return self._setting("SCHEDULER_INITIAL_SYNC", False)
+    
+    @property
+    def ON_RUN_SUB_CALLBACK(self):
+        if not (callback:=self._setting("ON_RUN_SUB_CALLBACK", None)):
+            return lambda: None  # noqa
+        
+        return import_attribute(callback)
 
 
 app_settings = AppSettings()
